@@ -21,7 +21,7 @@ defmodule Job.Worker do
   end
 
   def make_pipe(mod, fun) do
-    mod = mod |> String.strip |> String.to_atom
+    mod = mod |> String.strip |> String.to_existing_atom
 
     {fun, timeout} = case String.split fun, "," do
       [fun] -> {fun, 0}
