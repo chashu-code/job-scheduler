@@ -31,7 +31,14 @@ defmodule Job.Meter.Folsom do
      :folsom_metrics.get_metrics
   end
 
-  def new(:counter, name), do: :folsom_metrics.new_counter(name)
+  def new(:counter, name) do
+    case :folsom_metrics.new_counter(name) do
+      :ok -> :ok
+      {:error, _, :metric_already_exists} ->
+        :folsom_metrics_counter.clear name
+    end
+  end
+
   def new(:histogram, name), do: :folsom_metrics.new_histogram(name)
   def new(:gauge, name), do: :folsom_metrics.new_gauge(name)
   def new(:meter, name), do: :folsom_metrics.new_meter(name)
