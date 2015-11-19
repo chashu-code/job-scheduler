@@ -6,7 +6,7 @@ defmodule Job.SchedulerSup do
   end
 
   def init(_conf) do
-    schedule_ls = Application.get_env :job_scheduler, :scheduler
+    schedule_ls = Application.get_env :job_scheduler, :scheduler, []
 
     children = Enum.map schedule_ls, fn ({name, info}) ->
       id = String.to_atom("job_scheduler_#{name}")
