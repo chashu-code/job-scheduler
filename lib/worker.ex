@@ -83,8 +83,7 @@ defmodule Job.Worker do
           loop(dispatcher, pipes, {job, :ok})
         rescue
           error ->
-            Lager.error "worker pipe error ~p\n~p", [error, :erlang.get_stacktrace]
-            loop(dispatcher, pipes, {job, error})
+            loop(dispatcher, pipes, {job, {error, :erlang.get_stacktrace}})
         end
     end
   end

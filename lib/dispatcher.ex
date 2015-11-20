@@ -211,7 +211,7 @@ defmodule Job.Dispatcher do
         if ms_timeout < Util.ms_now do # timeout
             state
             |> Dict.put(:timeout_queue,  :queue.drop(timeout_queue))
-            |> job_response(worker, :timeout)
+            |> job_response(worker, :job_timeout)
             |> job_clean_timeout
         else
           state
@@ -269,13 +269,13 @@ defmodule Job.Dispatcher do
           state.meter.update_inc([:job, job_info.name, :finish])
           job_wait = job_wait - 1
         else # res is error
-          Lager.error "~p job's worker[~p] perform error!\n>job:~p\n>error:~p", [job_info.name, worker, job, res]
-
           if retry_count < job_info.retry_max do
+            Lager.error "~p job's worker[~p] perform error, retry!\n>job:~p\n>error:~p", [job_info.name, worker, job, res]
             state.meter.update_inc([:job, job_info.name, :retry])
             # put job in jobs again
             state = Dict.put state, :jobs, [{job, retry_count + 1} | state.jobs]
           else
+            Lager.critical "~p job's worker[~p] perform fail!\n>job:~p\n>error:~p", [job_info.name, worker, job, res]
             state.meter.update_inc([:job, job_info.name, :fail])
             job_wait = job_wait - 1 # job fail, job_wait - 1
           end
