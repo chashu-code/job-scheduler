@@ -20,7 +20,15 @@ defmodule Job.Util do
 
   def now_s(now \\ :calendar.local_time) do
     {{year, month, day},{hour, minute, second}} = now
-    "#{year}-#{month}-#{day} #{hour}:#{minute}:#{second}"
+
+    date = [year, month, day] |> Enum.map_join("-", &pad/1)
+    time = [hour, minute, second] |> Enum.map_join(":", &pad/1)
+
+    date <> " " <> time
+  end
+
+  defp pad(num) do
+    String.rjust("#{num}", 2, ?0)
   end
 
   def now, do: :calendar.local_time
