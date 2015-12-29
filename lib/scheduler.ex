@@ -26,7 +26,13 @@ defmodule Job.Scheduler do
             |> Dict.put_new(:dispatchers, [])
             |> Dict.put_new(:flows, [])
 
-    info |> Dict.put(:flows_copy, info.flows)
+
+    settings = Application.get_env(:job_scheduler, :settings, [])
+
+    info
+    |> Dict.put(:flows_copy, info.flows)
+    |> Dict.put(:parallel_max, settings[:parallel_max] || 0)
+    |> Dict.put(:notifier, settings[:notifier])
   end
 
 
@@ -83,7 +89,28 @@ defmodule Job.Scheduler do
 
   def state_change(state, state_next) do
     Lager.info "~p job scheduler's state change: ~p", [state.name, state_next]
-    Dict.put state, :state, state_next
+    state = Dict.put state, :state, state_next
+    notify(state)
+    state
+  end
+
+  def terminate(reason, state) do
+    notify(state, inspect(reason))
+  end
+
+  def notify(state, reason \\ nil) do
+    notifier = state.notifier
+    case notifier do
+      {m, f} -> # 定义了正确的 notifier
+        args = case reason do
+                  nil -> # state change
+                    [state.name, state.state, "状态变更"]
+                  error -> # has error
+                    [state.name, :error, error]
+                end
+        apply(m, f, args)
+      _ -> nil
+    end
   end
 
   def schedule(state) do
@@ -97,8 +124,6 @@ defmodule Job.Scheduler do
           |> flows_next
         :run ->
           # timeout
-          state
-          |> state_change(:timeout)
           raise Job.Error, message: "#{state.name} job scheduler timeout."
       end
     else
