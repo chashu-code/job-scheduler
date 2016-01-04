@@ -19,6 +19,12 @@ defmodule Job.SchedulerSup do
       )
     end
 
+    children = [
+      worker(
+        Job.ScheduleLimiter, []
+      ) | children
+    ]
+
     supervise(children, strategy: :one_for_one)
   end
 end

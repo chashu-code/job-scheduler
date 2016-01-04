@@ -5,6 +5,7 @@ defmodule Job.Scheduler do
 
   alias Job.Util
   alias Job.Dispatcher
+  alias Job.ScheduleLimiter
 
   def start_link(name, info, opts \\ []) do
     state = ensure_schedule_info(name, info)
@@ -41,7 +42,11 @@ defmodule Job.Scheduler do
     timeout_check_ms = state.interval
                        |> Util.to_ms
                        |> div(10)
-                       |> :erlang.max(1)
+                       |> max(1)
+                       |> min(30_000)
+    # 因为加了schedule 并发限制
+    # 所以，最长检测时间变更为 30s
+
     state = state
             |> Dict.put(:timeout_check_ms, timeout_check_ms)
             |> schedule
@@ -99,6 +104,11 @@ defmodule Job.Scheduler do
   end
 
   def notify(state, reason \\ nil) do
+    # release hold
+    if state.state == :finish || not is_nil(reason) do
+      ScheduleLimiter.release
+    end
+
     notifier = state.notifier
     case notifier do
       {m, f} -> # 定义了正确的 notifier
@@ -152,7 +162,13 @@ defmodule Job.Scheduler do
         ms_now >= (ms + ms_interval)
     end
 
-    chk_allow_ats && chk_interval
+    time_able = chk_allow_ats && chk_interval
+
+    if time_able do
+      ScheduleLimiter.hold
+    else
+      false
+    end
   end
 
   def flows_next(state) do

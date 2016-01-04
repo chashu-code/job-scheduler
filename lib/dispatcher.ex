@@ -54,6 +54,7 @@ defmodule Job.Dispatcher do
     meter.new(:counter, [:job, job_name, :retry])
     meter.new(:gauge, [:job, job_name, :state])
     meter.new(:gauge, [:job, job_name, :start_at])
+    meter.new(:gauge, [:job, job_name, :end_at])
 
     meter.update_gauge [:job, job_name, :state], state.state
     meter.update_gauge [:job, job_name, :count], state.job_wait
@@ -282,6 +283,7 @@ defmodule Job.Dispatcher do
         end
 
         if job_wait < 1 do # finish all job
+          state.meter.update_gauge [:job, job_info.name, :end_at], Util.now_s
           send self, :finish
         end
 
